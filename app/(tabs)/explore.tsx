@@ -1,109 +1,261 @@
-import { StyleSheet, Image, Platform } from 'react-native';
-
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  TextInput,
+  Button,
+  Text,
+  Platform,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as XLSX from 'xlsx';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export default function TabTwoScreen() {
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+  const [isSelectingStart, setIsSelectingStart] = useState(true);
+
+  // Format date to display
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  };
+
+  // Get date range string
+  const getDateRangeString = () => {
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  };
+
+  // Handle date change
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (selectedDate) {
+      if (isSelectingStart) {
+        setStartDate(selectedDate);
+        setIsSelectingStart(false);
+      } else {
+        if (selectedDate >= startDate) {
+          setEndDate(selectedDate);
+          setShowPicker(false);
+          setIsSelectingStart(true);
+        } else {
+          Alert.alert('Invalid Date', 'End date must be after start date');
+        }
+      }
+    } else {
+      setShowPicker(false);
+      setIsSelectingStart(true);
+    }
+  };
+
+  // Dummy data for export
+  const dummyData = [
+    {
+      WTG: "1",
+      Location: "New York",
+      Delivered: "Yes",
+      Status: "Completed"
+    },
+    {
+      WTG: "2",
+      Location: "Los Angeles",
+      Delivered: "No",
+      Status: "Pending"
+    },
+    {
+      WTG: "3",
+      Location: "Chicago",
+      Delivered: "Yes",
+      Status: "Completed"
+    }
+  ];
+
+  const handleExportReport = async () => {
+    try {
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(dummyData);
+      
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Report");
+      
+      // Generate Excel file
+      const wbout = XLSX.write(wb, {
+        type: 'base64',
+        bookType: 'xlsx'
+      });
+      
+      // Define file name
+      const fileName = `Report_${new Date().getTime()}.xlsx`;
+      
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        // Mobile platform
+        const fileUri = FileSystem.documentDirectory + fileName;
+        await FileSystem.writeAsStringAsync(fileUri, wbout, {
+          encoding: FileSystem.EncodingType.Base64
+        });
+        
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          dialogTitle: 'Export Report',
+          UTI: 'com.microsoft.excel.xlsx'
+        });
+      }
+    } catch (error) {
+      console.error('Error exporting file:', error);
+      Alert.alert('Error', 'Failed to export report. Please try again.');
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user's current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <View style={styles.container}>
+      <Text style={styles.title}>Generate Report</Text>
+      
+      <View style={styles.formContainer}>
+        <Text style={styles.label}>Date Range</Text>
+        <TouchableOpacity 
+          onPress={() => {
+            setIsSelectingStart(true);
+            setShowPicker(true);
+          }}
+          style={styles.input}
+        >
+          <Text>{getDateRangeString()}</Text>
+        </TouchableOpacity>
+
+        {showPicker && (
+          <View style={styles.datePickerContainer}>
+            <Text style={styles.datePickerHeader}>
+              Select {isSelectingStart ? 'Start' : 'End'} Date
+            </Text>
+            <DateTimePicker
+              value={isSelectingStart ? startDate : endDate}
+              mode="date"
+              display="inline"
+              onChange={onDateChange}
+              minimumDate={isSelectingStart ? undefined : startDate}
+              themeVariant="dark"
+              textColor="#FFFFFF"
+              accentColor="#075eec"
+              style={styles.datePicker}
+            />
+          </View>
+        )}
+
+        <Text style={styles.label}>Project</Text>
+        <TextInput style={styles.input} placeholder="All" editable={true} />
+
+        <Text style={styles.label}>HOTO</Text>
+        <TextInput style={styles.input} placeholder="All" editable={true} />
+
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={styles.tableHeaderText}>WTG</Text>
+            <Text style={styles.tableHeaderText}>Location</Text>
+            <Text style={styles.tableHeaderText}>Delivered</Text>
+            <Text style={styles.tableHeaderText}>Status</Text>
+          </View>
+          {dummyData.map((item, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={styles.tableCell}>{item.WTG}</Text>
+              <Text style={styles.tableCell}>{item.Location}</Text>
+              <Text style={styles.tableCell}>{item.Delivered}</Text>
+              <Text style={styles.tableCell}>{item.Status}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Button title="Export Report" onPress={handleExportReport} />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f9f9f9',
   },
-  titleContainer: {
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 20,
+  },
+  formContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 8,
+    marginTop: 5,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  table: {
+    marginVertical: 20,
+  },
+  tableHeader: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    paddingBottom: 5,
+  },
+  tableHeaderText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    flex: 1,
+    textAlign: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingVertical: 5,
+  },
+  tableCell: {
+    fontSize: 14,
+    flex: 1,
+    textAlign: 'center',
+  },
+  datePickerContainer: {
+    backgroundColor: '#222',
+    borderRadius: 10,
+    padding: 15,
+    marginVertical: 10,
+  },
+  datePickerHeader: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  datePicker: {
+    backgroundColor: '#222',
+    height: 'auto',
   },
 });
