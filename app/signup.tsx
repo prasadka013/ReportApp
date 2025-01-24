@@ -102,7 +102,7 @@ export default function SignupScreen() {
     }
 
     if (isValid) {
-      router.replace('./(tabs)/explore');
+      router.replace('./(tabs)/home');
     }
   };
 
@@ -225,7 +225,7 @@ export default function SignupScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 140,
+    paddingVertical: 140,
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 0,

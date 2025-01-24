@@ -101,7 +101,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 170,
+    paddingVertical: 170,
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 0,
